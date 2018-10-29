@@ -34,7 +34,7 @@ public:
     
     glm::vec3 getEndEffectorP();
     glm::quat getEndEffectorQ();
-    void setOrientation(Eigen::VectorXf& ceta_d);
+    void setOrientation(Eigen::VectorXf& theta_d);
     Eigen::MatrixXf getJacobian(const glm::vec3& endEffector);
     Eigen::VectorXf getx_dot(float deltaTime, const glm::vec3& errorP, const glm::quat& endEffectorOri, const glm::quat& ori_d);
     
@@ -239,17 +239,21 @@ bool BoneRig::solveIK(const glm::vec3& target, const glm::quat& ori_d) {
     oldtarget = target;
     
     //Check if it's reachable in the first place
+    //This is my root
     glm::vec3 shoulderLoc = glm::vec3(17.3806f, 56.0769, -5.0f);
     float lengthOfArm = 59.4943;
     
     std::cout << "target is "<< glm::to_string(target) <<std::endl;
+    
+    std::cout << glm::length(target-shoulderLoc) << std::endl;
+    std::cout << lengthOfArm << std::endl;
     
     if(glm::length(target-shoulderLoc)>lengthOfArm){
         std::cout << "IMPOSSIBLE" << std::endl;
         return false;
     }
     
-    float error = 1000.0f;
+    float error = 0.0f;
     Eigen::VectorXf deltaQ(5);
     Eigen::VectorXf Q_desired(5);
     Q_desired << 0,0,0,0,0;
@@ -265,10 +269,10 @@ bool BoneRig::solveIK(const glm::vec3& target, const glm::quat& ori_d) {
     Eigen::VectorXf oldQ_desired(6);
     float old_error;
     
-    int MaxIter = 1500;
+    int MaxIter = 3000;
     int iter = 0;
     
-    while(error > 0.1){
+    while(true){
         endEffectorP = getEndEffectorP();
         endEffectorOri = getEndEffectorQ();
         
@@ -300,12 +304,18 @@ bool BoneRig::solveIK(const glm::vec3& target, const glm::quat& ori_d) {
         
         //NOW DEBUGGING!!!
         old_error = error;
-        error = glm::length(errorP) + errorQ * errorQ;
+        error = glm::length(errorP) * glm::length(errorP) + errorQ * errorQ;
         
-        //Make sure it didn't get worse
-        if(error > old_error){
+        //Make sure it didn't get worse. I'm not sure if I need this though...
+        
+        
+        
+        if((error > old_error) && iter>0){
+            std::cout << "old_error is "<< old_error << std::endl;
+            std::cout << "error is "<< error << std::endl;
             std::cout << "Moving to wrong direction" <<std::endl;
             setOrientation(oldQ_desired);
+            break;
         }
         
         std::cout << "error is "<< error << std::endl;
@@ -331,6 +341,12 @@ Eigen::VectorXf BoneRig::getx_dot(float deltaTime, const glm::vec3& errorP, cons
     //xyz eulers
     glm::vec3 currentEuler = glm::eulerAngles(endEffectorOri);
     glm::vec3 desiredEuler = glm::eulerAngles(ori_d);
+    std::cout << "desiredEuler is "<< glm::to_string(desiredEuler) << std::endl;
+    std::cout << "currentEuler is "<< glm::to_string(currentEuler) << std::endl;
+    glm::quat key_quat(desiredEuler);
+    glm::quat key_quat2(currentEuler);
+    std::cout << glm::to_string(key_quat) << std::endl;
+    std::cout << glm::to_string(key_quat2) << std::endl;
     
     x_dot << errorP.x * deltaTime, errorP.y * deltaTime, errorP.z * deltaTime, (desiredEuler-currentEuler).x * deltaTime, (desiredEuler-currentEuler).y * deltaTime, (desiredEuler-currentEuler).z * deltaTime;
     return x_dot;
@@ -393,17 +409,21 @@ Eigen::MatrixXf BoneRig::getJacobian(const glm::vec3& endEffector){
     return J;
 }
 
-void BoneRig::setOrientation(Eigen::VectorXf& ceta_d){
-    Joints[15].setR_quat(glm::angleAxis(ceta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
-    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(ceta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
-    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(ceta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
-    Joints[16].setR_quat(glm::angleAxis(ceta_d(3), glm::vec3(1.0f, 0.0f, 0.0f)));
+void BoneRig::setOrientation(Eigen::VectorXf& theta_d){
+    Joints[15].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
+    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
+    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
+    Joints[16].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f, 0.0f, 0.0f)));
     //Implement Joint limits
-    if(ceta_d(3)>0)
-        ceta_d(3) = 0;
-    if(ceta_d(3)<-180)
-        ceta_d(3) = -180;
-    Joints[17].setR_quat(glm::angleAxis(ceta_d(4), glm::vec3(1.0f, 0.0f, 0.0f)));
+    if(theta_d(3)>0){
+        std::cout << "Joint limit 0 activated"<<std::endl;
+        theta_d(3) = 0;
+    }
+    if(theta_d(3)<-180){
+        std::cout << "Joint limit -180 activated"<<std::endl;
+        theta_d(3) = -180;
+    }
+    Joints[17].setR_quat(glm::angleAxis(theta_d(4), glm::vec3(1.0f, 0.0f, 0.0f)));
     return;
 }
 
