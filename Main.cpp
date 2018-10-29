@@ -1,10 +1,13 @@
+#define GLM_ENABLE_EXPERIMENTAL
 #include "BoneRig.h"
 #include <iostream>
+#include <Eigen/Dense>
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
-void drawBones(Shader& shader, Bone* rootBone, glm::mat4 model);
+void drawBones(Shader& shader, Joint * rootJoint, glm::mat4 model);
 // settings
 const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1920;
@@ -29,11 +32,9 @@ int FPSShower = 0;
 //How many times are the render settings updated?
 int update = 0;
 double timer = 0;
-
 unsigned int * VISITED;
-
 bool resetMatrices = false;
-
+bool mouseMode = false;
 double limitFPS = 0;
 
 int main(int argc, char **argv)
@@ -84,7 +85,6 @@ int main(int argc, char **argv)
     BoneRig Rig;
     Rig.setHierarchy();
     Rig.setBoneVAOs();
-    limitFPS = 0.008342;
     
     // build and compile shaders
     Shader shader("AnimationVertexShader.txt", "AnimationFragmentShader.txt");
@@ -93,11 +93,18 @@ int main(int argc, char **argv)
     // render loop
     // -----------
     
+    limitFPS = 0.008342;
     lastFrame = glfwGetTime();
     timer = lastFrame;
-    
-    
     VISITED = new unsigned int[24];
+    
+    //Test an end effector
+    glm::vec3 target= glm::vec3(15.0f, 20.0f, 35.0f);
+    //Target Orientation
+    float theta = 30.0f;
+    glm::vec3 v_unit = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::quat ori_d = glm::quat(glm::cos(glm::radians(theta/2)), v_unit * glm::sin(glm::radians(theta/2)));
+    
     while (!glfwWindowShouldClose(window))
     {
         // per-frame time logic
@@ -132,11 +139,19 @@ int main(int argc, char **argv)
             shader.setVec3("material.specular", 0.2f, 0.9f, 0.0f); // specular lighting doesn't have full effect on this object's material
             shader.setFloat("material.shininess", 32.0f);
             
+            if (mouseMode == false){
+                Rig.solveIK(target, ori_d);
+            }
+            else {
+                //Do the clicking calculations here
+                //Screen does not move, but only the mouse does.
+            }
             if (resetMatrices == true) {
                 Rig.resetMatrices();
                 resetMatrices = false;
                 frameIndex = 0;
             }
+            
             //update will probably be 120.
             update++;
             deltaTime2--;
@@ -144,7 +159,7 @@ int main(int argc, char **argv)
         
         //Render here. FPSShower shows maximum possible frames that were renderable!
         glm::mat4 model = glm::mat4(1.0f);
-        drawBones(shader, Rig.root, model);
+        drawBones(shader, &Rig.Joints[0], model);
         FPSShower++;
         
         //Shows how many frames passed for 1 second!
@@ -168,21 +183,22 @@ int main(int argc, char **argv)
 }
 
 
-void drawBones(Shader& shader, Bone* rootBone, glm::mat4 model) {
-    model = model * rootBone->returnT() * rootBone->returnR();
+void drawBones(Shader& shader, Joint * rootJoint, glm::mat4 model) {
+    //model = model * rootJoint->returnT() * glm::toMat4(rootJoint->returnR_quat());
+    model = model * rootJoint->returnT() * glm::toMat4(rootJoint->returnR_quat());
     glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
     glm::mat4 view = camera.GetViewMatrix();
     shader.setMat4("model", model);
     shader.setMat4("projection", projection);
     shader.setMat4("view", view);
-    for (int i = 0; i < rootBone->returnnChildren(); i++) {
-        glBindVertexArray(rootBone->returnVAOs(i));
+    for (int i = 0; i < rootJoint->returnnChildren(); i++) {
+        glBindVertexArray(rootJoint->returnVAOs(i));
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    VISITED[rootBone->returnBoneID()] = 1;
-    for (int i = 0; i < rootBone->returnnChildren(); i++) {
-        if (!VISITED[rootBone->i_thChild(i)->returnBoneID()]){
-            drawBones(shader, rootBone->i_thChild(i), model);
+    VISITED[rootJoint->returnJointID()] = 1;
+    for (int i = 0; i < rootJoint->returnnChildren(); i++) {
+        if (!VISITED[rootJoint->i_thChild(i)->returnJointID()]){
+            drawBones(shader, rootJoint->i_thChild(i), model);
         }
     }
 }
@@ -202,10 +218,10 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
-    //If we press spacebar, motion happens
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
         resetMatrices = true;
-    }
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+        mouseMode = true;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
