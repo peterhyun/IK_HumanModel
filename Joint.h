@@ -1,77 +1,118 @@
+//
+//  Joint.h
+//  ComputerAnimation
+//
+//  Created by Jeehoon Hyun on 27/10/2018.
+//  Copyright © 2018 Jeehoon Hyun. All rights reserved.
+//
+
+#ifndef Joint_h
+#define Joint_h
 //The unit node of the rig
-#ifndef BONE
-#define BONE
 
 #include "Shader.h"
 #include "Camera.h"
 #include <GLFW/glfw3.h>
+#include <Eigen/Dense>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <cstring>
 
 const int MAX = 3;
 
-class Bone {
+class Joint {
 private:
-    char * boneName;
-    int boneID;
+    char * JointName;
+    int JointID;
+    //Rotation needed from parent
     glm::mat4 R;
+    //Same Rotation, quaternion version
+    glm::quat R_quat;
     glm::mat4 T;
-    Bone * childBone[MAX];
+    
+    Joint * childJoint[MAX];
+    
     int nChildren = 0;
 public:
     float x, y, z;    //THIS Should be translated for intial T
     int * channelOrder;
     unsigned int * VAOs;
     
-    Bone(int boneID, float x=0, float y=0, float z=0) {
-        this->boneID = boneID;
+    Joint (int JointID=0, float x=0, float y=0, float z=0) {
+        this->JointID = JointID;
         this->R = glm::mat4(1.0f);
+        
+        this->R_quat = glm::quat(1.0,0.0,0.0,0.0);
+        
         this->T = glm::mat4(1.0f);
         this->x = x;
         this->y = y;
         this->z = z;
     }
+    void setJointID(int JointID){
+        this->JointID = JointID;
+    }
     
-    void setName(const char * boneName) {
-        size_t length = strlen(boneName) + 1;
-        this->boneName = new char[length];
-        strcpy(this->boneName, boneName);
+    void setFloats(float x, float y, float z){
+        this->x = x;
+        this->y = y;
+        this->z = z;
+    }
+    
+    void setName(const char * JointName) {
+        size_t length = strlen(JointName) + 1;
+        this->JointName = new char[length];
+        strcpy(this->JointName, JointName);
     }
     
     void setVAOs();
     
-    void setChild(Bone * child) {
-        childBone[nChildren] = child;
+    void setChild(Joint * child) {
+        childJoint[nChildren] = child;
         nChildren++;
     }
     
     void setR(glm::mat4 R) {
         this->R = R;
     }
+    
+    void setR_quat(glm::quat R_quat){
+        this->R_quat = R_quat;
+    }
+    
     void setT(glm::mat4 T) {
         this->T = T;
     }
+    
     void setT() {
         glm::mat4 temp = glm::mat4(1.0f);
         this->T = glm::translate(temp,glm::vec3(x,y,z));
     }
+    
     glm::mat4 returnR() {
         return R;
     }
+    
+    glm::quat returnR_quat(){
+        return R_quat;
+    }
+    
     glm::mat4 returnT() {
         return T;
     }
-    const char * returnBoneName() {
-        return boneName;
+    
+    const char * returnJointName() {
+        return JointName;
     }
-    int returnBoneID() {
-        return boneID;
+    int returnJointID() {
+        return JointID;
     }
     int returnnChildren() {
         return nChildren;
     }
-    Bone * i_thChild(int index) {
-        return childBone[index];
+    Joint * i_thChild(int index) {
+        return childJoint[index];
     }
     unsigned int returnVAOs(int i) {
         if (i >= nChildren) {
@@ -79,21 +120,21 @@ public:
             return NULL;
         }
         else {
-            //std::cout <<"For "<<boneName<<", " << i<<"_th VAO is about to be returned"<< std::endl;
+            //std::cout <<"For "<<JointName<<", " << i<<"_th VAO is about to be returned"<< std::endl;
             return VAOs[i];
         }
     }
 };
 
-void Bone::setVAOs() {
+void Joint::setVAOs() {
     VAOs = new unsigned int[nChildren];
-    //std::cout << "Making VAOs, for " << boneName << "nChildren is " << nChildren << std::endl;
+    //std::cout << "Making VAOs, for " << JointName << "nChildren is " << nChildren << std::endl;
     unsigned int * VBOs = new unsigned int[nChildren];
     glm::vec3 parentPos = glm::vec3(0.0f, 0.0f, 0.0f);
     for (int i = 0; i < nChildren; i++) {
-        float a = childBone[i]->x;
-        float b = childBone[i]->y;
-        float c = childBone[i]->z;
+        float a = childJoint[i]->x;
+        float b = childJoint[i]->y;
+        float c = childJoint[i]->z;
         glm::vec3 childPos = glm::vec3(a, b, c);
         glm::vec3 parent2Child = childPos - parentPos;
         glm::vec3 cross1 = normalize(glm::cross(parent2Child, glm::vec3(0.0f, 0.1f, -1.0f)));    //0.0f, 0.1f, -1.0f leads to NaN of foot and toes cause cross product becomes zero.
@@ -206,4 +247,5 @@ void Bone::setVAOs() {
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(sizeof(float)*108));
     }
 }
-#endif
+
+#endif /* Joint_h */
