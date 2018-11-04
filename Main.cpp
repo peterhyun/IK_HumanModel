@@ -2,15 +2,17 @@
 #include "BoneRig.h"
 #include <iostream>
 #include <Eigen/Dense>
-
+#include <string>
+#include <sstream>
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+//void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 void drawBones(Shader& shader, Joint * rootJoint, glm::mat4 model);
 // settings
-const unsigned int SCR_WIDTH = 2560;
-const unsigned int SCR_HEIGHT = 1920;
+const unsigned int SCR_WIDTH = 640;
+const unsigned int SCR_HEIGHT = 480;
 
 // camera
 glm::vec3 cameraLoc = glm::vec3(0.0f, 50.0f, 100.0f);
@@ -35,7 +37,28 @@ double timer = 0;
 unsigned int * VISITED;
 bool resetMatrices = false;
 bool mouseMode = false;
+bool armMode = true;
+bool upperBodyMode = false;
+bool pelvisMode = false;
+bool changeHand = false;
+bool changePelvis = false;
 double limitFPS = 0;
+
+BoneRig Rig;
+//Target Position
+glm::vec3 target= glm::vec3(20.0f, 50.0f, 40.0f);
+glm::vec3 pelvisTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+//Target Orientation
+float theta = -90.0f;
+float pelvisTheta = 0.0f;
+glm::vec3 v_unit = glm::vec3(1.0f, 0.0f, 0.0f);
+glm::vec3 pelvisV_unit = glm::vec3(1.0f, 0.0f, 0.0f);
+glm::quat ori_d = glm::quat(glm::cos(glm::radians(theta/2)), v_unit * glm::sin(glm::radians(theta/2)));
+glm::quat pelvisOri_d = glm::quat(glm::cos(glm::radians(pelvisTheta/2)), pelvisV_unit * glm::sin(glm::radians(pelvisTheta/2)));
+
+void printManual(){
+    std::cout << "WASD, Move mouse: Look around and move\nR: Reset model back to default\nM: Mouse Mode(Fix the screen and make mouse visible)\nN: Exit Mouse Mode\n1: IK with just the arm\n2: IK with the whole upper part of body\n3: IK with pelvis position, feet fixed\nH: Change hand position and orientation\nP: Change pelvis position and orientation\nEsc: Exit" << std::endl;
+}
 
 int main(int argc, char **argv)
 {
@@ -53,7 +76,8 @@ int main(int argc, char **argv)
     // glfw window creation
     // --------------------
     
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "BVHParser", NULL, NULL);
+    
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "IKSolver", NULL, NULL);
     
     if (window == NULL)
     {
@@ -61,10 +85,12 @@ int main(int argc, char **argv)
         glfwTerminate();
         return -1;
     }
+    
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    //glfwSetMouseButtonCallback(window, mouse_button_callback);
     
     // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -82,7 +108,6 @@ int main(int argc, char **argv)
     glEnable(GL_DEPTH_TEST);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     
-    BoneRig Rig;
     Rig.setHierarchy();
     Rig.setBoneVAOs();
     
@@ -93,17 +118,12 @@ int main(int argc, char **argv)
     // render loop
     // -----------
     
+    printManual();
+    
     limitFPS = 0.008342;
     lastFrame = glfwGetTime();
     timer = lastFrame;
     VISITED = new unsigned int[24];
-    
-    //Test an end effector
-    glm::vec3 target= glm::vec3(15.0f, 20.0f, 35.0f);
-    //Target Orientation
-    float theta = 30.0f;
-    glm::vec3 v_unit = glm::vec3(0.0f, 0.0f, 1.0f);
-    glm::quat ori_d = glm::quat(glm::cos(glm::radians(theta/2)), v_unit * glm::sin(glm::radians(theta/2)));
     
     while (!glfwWindowShouldClose(window))
     {
@@ -126,6 +146,8 @@ int main(int argc, char **argv)
         while (deltaTime2 >= 1.0) {
             // render
             // ------
+            
+            
             glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             
@@ -138,18 +160,69 @@ int main(int argc, char **argv)
             shader.setVec3("material.diffuse", 0.2f, 0.9f, 0.0f);
             shader.setVec3("material.specular", 0.2f, 0.9f, 0.0f); // specular lighting doesn't have full effect on this object's material
             shader.setFloat("material.shininess", 32.0f);
-            
-            if (mouseMode == false){
-                Rig.solveIK(target, ori_d);
+            if(armMode){
+                Rig.solveIKArm(target, ori_d);
             }
-            else {
-                //Do the clicking calculations here
-                //Screen does not move, but only the mouse does.
+            else if(upperBodyMode){
+                Rig.solveIKUpperBody(target, ori_d);
             }
-            if (resetMatrices == true) {
+            else if(pelvisMode){
+                Rig.solveIKPelvis(pelvisTarget, pelvisOri_d);
+            }
+            else if (resetMatrices) {
                 Rig.resetMatrices();
                 resetMatrices = false;
                 frameIndex = 0;
+            }
+            if(changeHand && mouseMode){
+                //std::cout << "How many times is this loop called..?" << std::endl;
+                std::cout<< "Current target position: "<< target.x<<" "<<target.y<<" "<<target.z<< "\nChange position to (input all target positions and press enter): ";
+                std::string line;
+                std::getline(std::cin, line);
+                std::istringstream ss(line);
+                float temp1, temp2, temp3;
+                ss >> temp1;
+                ss >> temp2;
+                ss >> temp3;
+                target = glm::vec3(temp1, temp2, temp3);
+                std::cout << "Current theta: "<<theta<<"\nCurrent v_unit: "<<v_unit.x<<" "<<v_unit.y<<" "<<v_unit.z;
+                std::cout << "\nChange current theta and v_unit to (put all 4 components and press enter): ";
+                std::getline(std::cin, line);
+                std::istringstream ss2(line);
+                ss2 >> theta;
+                ss2 >> temp1;
+                ss2 >> temp2;
+                ss2 >> temp3;
+                v_unit = glm::vec3(temp1, temp2, temp3);
+                ori_d = glm::quat(glm::cos(glm::radians(theta/2)), v_unit * glm::sin(glm::radians(theta/2)));
+                changeHand = false;
+                pelvisMode = false;
+            }
+            if(changePelvis && mouseMode){
+                //std::cout << "How many times is this loop called..?" << std::endl;
+                std::cout<< "Current target position: "<< pelvisTarget.x<<" "<<pelvisTarget.y<<" "<<pelvisTarget.z<< "\nChange position to (input all target positions and press enter): ";
+                std::string line;
+                std::getline(std::cin, line);
+                std::istringstream ss(line);
+                float temp1, temp2, temp3;
+                ss >> temp1;
+                ss >> temp2;
+                ss >> temp3;
+                pelvisTarget = glm::vec3(temp1, temp2, temp3);
+                std::cout << "Current theta: "<<pelvisTheta<<"\nCurrent v_unit: "<<pelvisV_unit.x<<" "<<pelvisV_unit.y<<" "<<pelvisV_unit.z;
+                std::cout << "\nChange current theta and v_unit to (put all 4 components and press enter): ";
+                std::getline(std::cin, line);
+                std::istringstream ss2(line);
+                ss2 >> theta;
+                ss2 >> temp1;
+                ss2 >> temp2;
+                ss2 >> temp3;
+                pelvisV_unit = glm::vec3(temp1, temp2, temp3);
+                pelvisOri_d = glm::quat(glm::cos(glm::radians(pelvisTheta/2)), pelvisV_unit * glm::sin(glm::radians(pelvisTheta/2)));
+                changePelvis = false;
+                armMode = false;
+                upperBodyMode = false;
+                pelvisMode = true;
             }
             
             //update will probably be 120.
@@ -165,7 +238,7 @@ int main(int argc, char **argv)
         //Shows how many frames passed for 1 second!
         if (glfwGetTime() - timer > 1.0) {
             timer++;
-            std::cout << "FPS: " << FPSShower << " Updated: " << update << " times" << std::endl;
+            //std::cout << "FPS: " << FPSShower << " Updated: " << update << " times" << std::endl;
             FPSShower = 0;
             update = 0;
         }
@@ -210,18 +283,53 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+    if(mouseMode == false) {
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            camera.ProcessKeyboard(FORWARD, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            camera.ProcessKeyboard(BACKWARD, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            camera.ProcessKeyboard(LEFT, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            camera.ProcessKeyboard(RIGHT, deltaTime);
+    }
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
         resetMatrices = true;
-    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+    
+    //"Mouse mode"
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS){
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         mouseMode = true;
+    }
+    //"No" more mouse mode
+    if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS){
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        mouseMode = false;
+    }
+     
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS){
+        //Rig.clear();
+        armMode = true; //Move just the arm
+        upperBodyMode = false;
+        pelvisMode = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS){
+        upperBodyMode = true;
+        armMode = false; //Now move the full body
+        pelvisMode =false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS){
+        pelvisMode = true;
+        upperBodyMode = false;
+        armMode = false;
+    }
+    if(glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS){
+        //Rig.clear();
+        changeHand = true;
+    }
+    if(glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS){
+        changePelvis = true;
+    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -244,13 +352,15 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         firstMouse = false;
     }
     
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    if(mouseMode == false){
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
     
-    lastX = xpos;
-    lastY = ypos;
+        lastX = xpos;
+        lastY = ypos;
+        camera.ProcessMouseMovement(xoffset, yoffset);
+    }
     
-    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
@@ -259,3 +369,39 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(yoffset);
 }
+
+/* //Still lacking some functions
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods){
+    Rig.clear();
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
+        int screen_w, screen_h;
+        //virtual screen size
+        glfwGetWindowSize(window, &screen_w, &screen_h);
+        int pixel_w, pixel_h;
+        //pixel screen size
+        glfwGetFramebufferSize(window, &pixel_w, &pixel_h);
+        double xpos,ypos;
+        //Get the position from screen (virtual screen)
+        glfwGetCursorPos(window, &xpos, &ypos);
+        glm::vec2 screen_pos=glm::vec2(xpos, ypos);
+        //Change screen pos to pixel pos
+        glm::vec2 pixel_pos=screen_pos * glm::vec2(pixel_w, pixel_h) / glm::vec2(screen_w, screen_h);
+        //Shift to GL's center convention
+        pixel_pos = pixel_pos + glm::vec2(0.5f, 0.5f);
+        //gl's coordinate convention starts from the bottom.
+        glm::vec3 win=glm::vec3(pixel_pos.x, pixel_h-1-pixel_pos.y, 0.0f);
+        //Read the depth value here. Is gonna be from 0 to 1
+        glReadPixels( (GLint)win.x, (GLint)win.y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &win.z);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+        
+        glm::vec4 viewport(0.0f,0.0f,(float)pixel_w, (float)pixel_h);
+        
+        glm::vec3 world = glm::unProject(win, camera.GetViewMatrix() , projection, viewport);
+        
+        std::cout << "world " << world.x << " " << world.y << " " << world.z << std::endl;
+        
+        if(glm::length((world - target))<100)
+            target = world;
+    }
+ }
+*/
