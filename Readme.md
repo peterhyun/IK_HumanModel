@@ -4,7 +4,7 @@ This is an IK-solver(using Jacobian matrix and damped-least-squared pseudo-inver
 
 Shader.h and Camera.h code are from Joey de Vries's https://learnopengl.com
 
-Key bindings:  
+## Key bindings  
 R: Reset model back to default  
 M: Mouse Mode(Fix the screen and make mouse visible)  
 N: Exit Mouse Mode  
