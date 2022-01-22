@@ -13,7 +13,7 @@ N: Exit Mouse Mode
 C: Change hand position and orientation  
 Esc: Exit  
 
-For more details, refer to the ```IK Report.pdf``` file.
+For more details regarding Jacobian-based IK solvers, refer to the ```IK Report.pdf``` file.
 
 Here is a demo video.  
 https://www.youtube.com/watch?v=n8UnMyvP6Uk&feature=youtu.be
