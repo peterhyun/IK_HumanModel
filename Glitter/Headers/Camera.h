@@ -1,8 +1,10 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
 #include <vector>
 
 // Defines several possible options for camera movement. Used as abstraction to stay away from window-system specific input methods
@@ -17,7 +19,7 @@ enum Camera_Movement {
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
 const float SPEED = 50.0f;
-const float SENSITIVITY = 0.08f;
+const float SENSITIVITY = 0.15f;
 const float ZOOM = 45.0f;
 
 
@@ -57,12 +59,6 @@ public:
 		Pitch = pitch;
 		updateCameraVectors();
 	}
-    
-    void changeCameraLocationAndFront(glm::vec3 cameraLoc, glm::vec3 Front){
-        Position = cameraLoc;
-        this->Front = Front;
-        Right = glm::normalize(glm::cross(Front, WorldUp));
-    }
 
 	// Returns the view matrix calculated using Euler Angles and the LookAt Matrix
 	glm::mat4 GetViewMatrix()
