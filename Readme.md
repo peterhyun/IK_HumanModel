@@ -1,8 +1,33 @@
 # IK_HumanModel
 
 This is an IK-solver(using Jacobian matrix and damped-least-squared pseudo-inverse) for the shoulder-to-arm part and the pelvis-to-arm part of the human model. The shoulder's position is fixed and it is a ball-and-socket joint. The rest of the joints(elbow, hand) are just revolute joints.  
+I used Kevin Fung's ```Glitter``` repository to make this repository a self-contained OpenGL project.
 
-Shader.h and Camera.h code are from Joey de Vries's https://learnopengl.com
+## How to build and run.
+1. Download this repository and go to AnimationFramework/Build directory.
+```
+git clone --recursive https://github.com/peterhyun/AnimationFramework
+cd AnimationFramework
+cd Build
+```
+
+2. Make a project/solution file or makefile depending on your platform. I used Microsoft Windows, Visual Studio 2019.
+```
+# UNIX Makefile
+cmake ..
+
+# Mac OSX
+cmake -G "Xcode" ..
+
+# Microsoft Windows
+cmake -G "Visual Studio 16 2019" ..
+...
+```
+
+3. Build the project on your platform accordingly.
+
+4. Run the produced executable file with with the fbx file name you want to load as the command line input.
+```./Glitter```
 
 ## Key bindings  
 R: Reset model back to default  
