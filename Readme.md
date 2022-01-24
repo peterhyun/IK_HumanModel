@@ -10,7 +10,6 @@ git clone --recursive https://github.com/peterhyun/AnimationFramework
 cd AnimationFramework
 cd Build
 ```
-
 2. Make a project/solution file or makefile depending on your platform. I used Microsoft Windows, Visual Studio 2019.
 ```
 # UNIX Makefile
@@ -23,10 +22,8 @@ cmake -G "Xcode" ..
 cmake -G "Visual Studio 16 2019" ..
 ...
 ```
-
 3. Build the project on your platform accordingly.
-
-4. Run the produced executable file with with the fbx file name you want to load as the command line input.
+4. Run the produced executable file in the command line input.
 ```./Glitter```
 
 ## Key bindings  
