@@ -41,20 +41,23 @@ private:
     glm::quat getEndEffectorQ();
     void setOrientationArm(Eigen::VectorXf& theta_d);
     void setOrientationUpperBody(Eigen::VectorXf& theta_d);
-    void setOrientationLeftLeg(Eigen::VectorXf& theta_d);
-    void setOrientationRightLeg(Eigen::VectorXf& theta_d);
     Eigen::MatrixXf getJacobianArm(const glm::vec3& endEffector);
     Eigen::MatrixXf getJacobianUpperBody(const glm::vec3& endEffector);
-    Eigen::MatrixXf getJacobianLeftLeg(const glm::vec3& endEffector);
-    Eigen::MatrixXf getJacobianRightLeg(const glm::vec3& endEffector);
     Eigen::VectorXf getx_dot(float deltaTime, const glm::vec3& errorP, const glm::quat& endEffectorOri, const glm::quat& ori_d);
     glm::mat4 getJointGlobal2LocalT(int index);
     glm::mat4 sub_getJointGlobal2LocalT(Joint * root, glm::mat4 T);
+    
+    /* //For future implementation! IK for the leg!
+    void setOrientationLeftLeg(Eigen::VectorXf& theta_d);
+    void setOrientationRightLeg(Eigen::VectorXf& theta_d);
+    Eigen::MatrixXf getJacobianLeftLeg(const glm::vec3& endEffector);
+    Eigen::MatrixXf getJacobianRightLeg(const glm::vec3& endEffector);
     glm::vec3 getEndEffectorLeftFootP();
     glm::quat getEndEffectorLeftFootQ();
     glm::vec3 getEndEffectorRightFootP();
     glm::quat getEndEffectorRightFootQ();
-
+    */
+    
 };
 
 //Get Joint[index]'s global position
@@ -634,6 +637,140 @@ Eigen::MatrixXf BoneRig::getJacobianUpperBody(const glm::vec3& endEffector){
     return J;
 }
 
+void BoneRig::setOrientationArm(Eigen::VectorXf& theta_d){
+    Joints[15].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
+    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
+    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
+    //Implement Joint limits
+    if(theta_d(3)>0){
+        //std::cout << "Joint limit 0 activated"<<std::endl;
+        theta_d(3) = 0;
+    }
+    
+    Joints[16].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f, 0.0f, 0.0f)));
+    Joints[17].setR_quat(glm::angleAxis(theta_d(4), glm::vec3(1.0f, 0.0f, 0.0f)));
+
+    //std::cout << "orientation arm set" << std::endl;
+
+    return;
+}
+
+void BoneRig::setOrientationUpperBody(Eigen::VectorXf& theta_d){
+    if(theta_d(0)<glm::radians(-70.0f)){
+        //std::cout << "Joint limit -70.0f";
+        theta_d(0) = glm::radians(-70.0f);
+    }
+    Joints[11].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
+    if(theta_d(1)>glm::radians(90.0f)){
+        //std::cout << "Joint[11]_y limit 90.0f";
+        theta_d(1) = glm::radians(90.0f);
+    }
+    if(theta_d(1)<glm::radians(-90.0f)){
+        //std::cout << "Joint[11]_y limit -90.0f";
+        theta_d(1) = glm::radians(-90.0f);
+    }
+    Joints[11].setR_quat(Joints[11].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
+    if(theta_d(2)>glm::radians(90.0f)){
+        //std::cout << "Joint limit_z 90.0f";
+        theta_d(2) = glm::radians(90.0f);
+    }
+    if(theta_d(2)<glm::radians(-90.0f)){
+        //std::cout << "Joint limit_z -90.0f";
+        theta_d(2) = glm::radians(-90.0f);
+    }
+    Joints[11].setR_quat(Joints[11].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
+    Joints[15].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f,0.0f,0.0f)));
+    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(4), glm::vec3(0.0f, 1.0f, 0.0f)));
+    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(5), glm::vec3(0.0f, 0.0f, 1.0f)));
+    
+    if(theta_d(6)>0){
+        //std::cout << "Joint limit 0 activated: theta_d(6) is "<<theta_d(6)<<std::endl;
+        theta_d(6) = 0;
+    }
+    
+    Joints[16].setR_quat(glm::angleAxis(theta_d(6), glm::vec3(1.0f, 0.0f, 0.0f)));
+    Joints[17].setR_quat(glm::angleAxis(theta_d(7), glm::vec3(1.0f, 0.0f, 0.0f)));
+    
+    //std::cout << "orientation upper body set" << std::endl;
+
+    return;
+}
+
+//Correct method!
+glm::vec3 BoneRig::getEndEffectorP(){
+    glm::vec3 endEffector;
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::vec4 origin = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    model = getJointGlobal2LocalT(18);
+    glm::vec4 temp = model * origin;
+    endEffector = glm::vec3(temp);
+    return endEffector;
+}
+
+glm::quat BoneRig::getEndEffectorQ(){
+    glm::quat model = Joints[0].returnR_quat();
+    model = model * Joints[11].returnR_quat();
+    model = model * Joints[14].returnR_quat();
+    model = model * Joints[15].returnR_quat();
+    model = model * Joints[16].returnR_quat();
+    model = model * Joints[17].returnR_quat();
+    model = model * Joints[18].returnR_quat();
+    return model;
+}
+
+/*
+
+void BoneRig::setOrientationLeftLeg(Eigen::VectorXf& theta_d){
+    Joints[1].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
+    Joints[1].setR_quat(Joints[1].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
+    Joints[1].setR_quat(Joints[1].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
+    
+    if(theta_d(3)<0)
+        theta_d(3)=0;
+    Joints[2].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f,0.0f,0.0f)));
+
+    //std::cout << "orientation left leg set" << std::endl;
+    return;
+}
+
+void BoneRig::setOrientationRightLeg(Eigen::VectorXf& theta_d){
+    Joints[6].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
+    Joints[6].setR_quat(Joints[6].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
+    Joints[6].setR_quat(Joints[6].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
+    
+    if(theta_d(3)<0)
+        theta_d(3)=0;
+    Joints[7].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f,0.0f,0.0f)));
+
+    //std::cout << "orientation right leg set" << std::endl;
+}
+
+glm::vec3 BoneRig::getEndEffectorLeftFootP(){
+    glm::mat4 toFoot = getJointGlobal2LocalT(3);
+    return glm::vec3(toFoot * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+
+glm::vec3 BoneRig::getEndEffectorRightFootP(){
+    glm::mat4 toFoot = getJointGlobal2LocalT(8);
+    return glm::vec3(toFoot * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+
+glm::quat BoneRig::getEndEffectorLeftFootQ(){
+    glm::quat model = Joints[0].returnR_quat();
+    model = model * Joints[1].returnR_quat();
+    model = model * Joints[2].returnR_quat();
+    model = model * Joints[3].returnR_quat();
+    return model;
+}
+
+glm::quat BoneRig::getEndEffectorRightFootQ(){
+    glm::quat model = Joints[0].returnR_quat();
+    model = model * Joints[6].returnR_quat();
+    model = model * Joints[7].returnR_quat();
+    model = model * Joints[8].returnR_quat();
+    return model;
+}
+
 Eigen::MatrixXf BoneRig::getJacobianLeftLeg(const glm::vec3& endEffector){
     Eigen::MatrixXf J(6,4);
     glm::vec4 xAxis = glm::vec4(1.0f,0.0f,0.0f,0.0f);
@@ -726,136 +863,6 @@ Eigen::MatrixXf BoneRig::getJacobianRightLeg(const glm::vec3& endEffector){
     return J;
 }
 
-void BoneRig::setOrientationArm(Eigen::VectorXf& theta_d){
-    Joints[15].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
-    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
-    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
-    //Implement Joint limits
-    if(theta_d(3)>0){
-        //std::cout << "Joint limit 0 activated"<<std::endl;
-        theta_d(3) = 0;
-    }
-    
-    Joints[16].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f, 0.0f, 0.0f)));
-    Joints[17].setR_quat(glm::angleAxis(theta_d(4), glm::vec3(1.0f, 0.0f, 0.0f)));
-
-    //std::cout << "orientation arm set" << std::endl;
-
-    return;
-}
-
-void BoneRig::setOrientationUpperBody(Eigen::VectorXf& theta_d){
-    if(theta_d(0)<glm::radians(-70.0f)){
-        //std::cout << "Joint limit -70.0f";
-        theta_d(0) = glm::radians(-70.0f);
-    }
-    Joints[11].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
-    if(theta_d(1)>glm::radians(90.0f)){
-        //std::cout << "Joint[11]_y limit 90.0f";
-        theta_d(1) = glm::radians(90.0f);
-    }
-    if(theta_d(1)<glm::radians(-90.0f)){
-        //std::cout << "Joint[11]_y limit -90.0f";
-        theta_d(1) = glm::radians(-90.0f);
-    }
-    Joints[11].setR_quat(Joints[11].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
-    if(theta_d(2)>glm::radians(90.0f)){
-        //std::cout << "Joint limit_z 90.0f";
-        theta_d(2) = glm::radians(90.0f);
-    }
-    if(theta_d(2)<glm::radians(-90.0f)){
-        //std::cout << "Joint limit_z -90.0f";
-        theta_d(2) = glm::radians(-90.0f);
-    }
-    Joints[11].setR_quat(Joints[11].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
-    Joints[15].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f,0.0f,0.0f)));
-    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(4), glm::vec3(0.0f, 1.0f, 0.0f)));
-    Joints[15].setR_quat(Joints[15].returnR_quat() * glm::angleAxis(theta_d(5), glm::vec3(0.0f, 0.0f, 1.0f)));
-    
-    if(theta_d(6)>0){
-        //std::cout << "Joint limit 0 activated: theta_d(6) is "<<theta_d(6)<<std::endl;
-        theta_d(6) = 0;
-    }
-    
-    Joints[16].setR_quat(glm::angleAxis(theta_d(6), glm::vec3(1.0f, 0.0f, 0.0f)));
-    Joints[17].setR_quat(glm::angleAxis(theta_d(7), glm::vec3(1.0f, 0.0f, 0.0f)));
-    
-    //std::cout << "orientation upper body set" << std::endl;
-
-    return;
-}
-
-void BoneRig::setOrientationLeftLeg(Eigen::VectorXf& theta_d){
-    Joints[1].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
-    Joints[1].setR_quat(Joints[1].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
-    Joints[1].setR_quat(Joints[1].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
-    
-    if(theta_d(3)<0)
-        theta_d(3)=0;
-    Joints[2].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f,0.0f,0.0f)));
-
-    //std::cout << "orientation left leg set" << std::endl;
-    return;
-}
-
-void BoneRig::setOrientationRightLeg(Eigen::VectorXf& theta_d){
-    Joints[6].setR_quat(glm::angleAxis(theta_d(0), glm::vec3(1.0f,0.0f,0.0f)));
-    Joints[6].setR_quat(Joints[6].returnR_quat() * glm::angleAxis(theta_d(1), glm::vec3(0.0f, 1.0f, 0.0f)));
-    Joints[6].setR_quat(Joints[6].returnR_quat() * glm::angleAxis(theta_d(2), glm::vec3(0.0f, 0.0f, 1.0f)));
-    
-    if(theta_d(3)<0)
-        theta_d(3)=0;
-    Joints[7].setR_quat(glm::angleAxis(theta_d(3), glm::vec3(1.0f,0.0f,0.0f)));
-
-    //std::cout << "orientation right leg set" << std::endl;
-}
-
-//Correct method!
-glm::vec3 BoneRig::getEndEffectorP(){
-    glm::vec3 endEffector;
-    glm::mat4 model = glm::mat4(1.0f);
-    glm::vec4 origin = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    model = getJointGlobal2LocalT(18);
-    glm::vec4 temp = model * origin;
-    endEffector = glm::vec3(temp);
-    return endEffector;
-}
-
-glm::quat BoneRig::getEndEffectorQ(){
-    glm::quat model = Joints[0].returnR_quat();
-    model = model * Joints[11].returnR_quat();
-    model = model * Joints[14].returnR_quat();
-    model = model * Joints[15].returnR_quat();
-    model = model * Joints[16].returnR_quat();
-    model = model * Joints[17].returnR_quat();
-    model = model * Joints[18].returnR_quat();
-    return model;
-}
-
-glm::vec3 BoneRig::getEndEffectorLeftFootP(){
-    glm::mat4 toFoot = getJointGlobal2LocalT(3);
-    return glm::vec3(toFoot * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-}
-
-glm::vec3 BoneRig::getEndEffectorRightFootP(){
-    glm::mat4 toFoot = getJointGlobal2LocalT(8);
-    return glm::vec3(toFoot * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-}
-
-glm::quat BoneRig::getEndEffectorLeftFootQ(){
-    glm::quat model = Joints[0].returnR_quat();
-    model = model * Joints[1].returnR_quat();
-    model = model * Joints[2].returnR_quat();
-    model = model * Joints[3].returnR_quat();
-    return model;
-}
-
-glm::quat BoneRig::getEndEffectorRightFootQ(){
-    glm::quat model = Joints[0].returnR_quat();
-    model = model * Joints[6].returnR_quat();
-    model = model * Joints[7].returnR_quat();
-    model = model * Joints[8].returnR_quat();
-    return model;
-}
+*/
 
 #endif
