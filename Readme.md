@@ -1,7 +1,22 @@
 # IK_HumanModel
+> October 2019 Jeehon Hyun
 
-This is an IK-solver(using Jacobian matrix and damped-least-squared pseudo-inverse) for the shoulder-to-arm part and the pelvis-to-arm part of the human model. The shoulder's position is fixed and it is a ball-and-socket joint. The rest of the joints(elbow, hand) are just revolute joints.  
-I used Kevin Fung's ```Glitter``` repository to make this repository a self-contained OpenGL project.
+This is an IK-solver(using Jacobian matrix and damped-least-squared pseudo-inverse) for the shoulder-to-arm part and the pelvis-to-arm part of the human model.  
+The shoulder's position is fixed and it is a ball-and-socket joint. The rest of the joints(elbow, hand) are just revolute joints.
+
+## Demo
+https://www.youtube.com/watch?v=n8UnMyvP6Uk&feature=youtu.be
+
+## Key bindings  
+R: Reset model back to default  
+M: Mouse Mode(Fix the screen and make mouse visible)  
+N: Exit Mouse Mode  
+1: IK with just the arm  
+2: IK with the whole upper part of body  
+C: Change hand position and orientation  
+Esc: Exit  
+
+For more details regarding Jacobian-based IK solvers, refer to the ```IK Report.pdf``` file.
 
 ## How to build and run.
 1. Download this repository and go to AnimationFramework/Build directory.
@@ -10,6 +25,10 @@ git clone --recursive https://github.com/peterhyun/AnimationFramework
 cd AnimationFramework
 cd Build
 ```
+
+If you forgot to use the ```--recursive``` flag while cloning this repository, use the following line to update the submodules:  
+```git submodule update --init```
+
 2. Make a project/solution file or makefile depending on your platform. I used Microsoft Windows, Visual Studio 2019.
 ```
 # UNIX Makefile
@@ -23,76 +42,46 @@ cmake -G "Visual Studio 16 2019" ..
 ...
 ```
 3. Build the project on your platform accordingly.
+
+While building in the Visual Studio 2019 IDE, ```Treat Warning As Errors``` had to be unticked in the project file property settings for building the Assimp library.
+![TreatWarningAsErrors](screenshots/DoNotTreatWarningsAsErrors.JPG)
+
 4. Run the produced executable file in the command line input.
 ```./Glitter```
 
-## Key bindings  
-R: Reset model back to default  
-M: Mouse Mode(Fix the screen and make mouse visible)  
-N: Exit Mouse Mode  
-1: IK with just the arm  
-2: IK with the whole upper part of body  
-C: Change hand position and orientation  
-Esc: Exit  
+## Directory Structure & Explanation
+.  
+├── Build  
+├── Glitter/  
+│   ├── Assets/  
+│   │   └── triangulatedTShirt.obj  
+│   ├── Headers/  
+│   │   ├── Camera.h  
+│   │   ├── EulerStepSolver.h  
+│   │   ├── OBJReader.h  
+│   │   ├── Particle.h  
+│   │   ├── ParticleSystem.h  
+│   │   └── Shader.h  
+│   ├── Shaders/  
+│   │   ├── model_loading.fs  
+│   │   └── model_loading.vs  
+│   ├── Sources/  
+│   │   └── main.cpp  
+│   └── Vendor/  
+├── screenshots/  
+├── CMakeLists.txt  
+└── Readme.md  
 
-For more details regarding Jacobian-based IK solvers, refer to the ```IK Report.pdf``` file.
+The tree above shows the relevant files/folders of my project. All the code that I wrote is in the ```./Glitter/Headers/```, ```./Glitter/Shaders/```, and ```./Glitter/Sources/``` directory. In this cloth simulation project, I treated the clothing as a system of particles, and each particle contains the following information: position, velocity, and net force which is implemented in ```Particle.h```. The ```OBJReader``` class parses each vertex written in the obj file into a ```Particle```, and the ```ParticleSystem``` class connects adjacent particles as if a damped mass spring is connected between them. The ```EulerStepSolver``` class applies forces in the ```ParticleSystem``` and calculates the newly updated particle position per time step. The new particle position is rendered on screen via the render loop implemented in ```main.cpp```.
 
-Here is a demo video.  
-https://www.youtube.com/watch?v=n8UnMyvP6Uk&feature=youtu.be
+The shaders I utilized are the vertex shader and fragment shader. You can find the relevant glsl code in ```model_loading.vs``` and ```model_loading.fs``` respectively. It's just basic glsl in this case, so I won't go through it deeply.
 
-Below is the Readme file of the Glitter repository.
----------------------------------------------------------------------------------------------------------------------------------------------------
-# [Glitter](http://polytonic.github.io/Glitter/)
-![Screenshot](http://i.imgur.com/MDo2rsy.jpg)
+## Acknowledgement
+The basic OpenGL Setup boilerplate of this code is from Kevin Fung's Glitter repository: https://github.com/Polytonic/Glitter
+With this boilerplate, you can test this code in Windows, Linux, or Mac environment. The only dependency it requires is CMake.
 
-## Summary
-Glitter is a dead simple boilerplate for OpenGL, intended as a starting point for the tutorials on [learnopengl.com](http://www.learnopengl.com) and [open.gl](https://open.gl). Glitter compiles and statically links every required library, so you can jump right into doing what you probably want: how to get started with OpenGL.
-
-## Getting Started
-Glitter has a single dependency: [cmake](http://www.cmake.org/download/), which is used to generate platform-specific makefiles or project files. Start by cloning this repository, making sure to pass the `--recursive` flag to grab all the dependencies. If you forgot, then you can `git submodule update --init` instead.
-
-```bash
-git clone --recursive https://github.com/Polytonic/Glitter
-cd Glitter
-cd Build
-```
-
-Now generate a project file or makefile for your platform. If you want to use a particular IDE, make sure it is installed; don't forget to set the Start-Up Project in Visual Studio or the Target in Xcode.
-
-```bash
-# UNIX Makefile
-cmake ..
-
-# Mac OSX
-cmake -G "Xcode" ..
-
-# Microsoft Windows
-cmake -G "Visual Studio 14" ..
-cmake -G "Visual Studio 14 Win64" ..
-...
-```
-
-If you compile and run, you should now be at the same point as the [Hello Window](http://www.learnopengl.com/#!Getting-started/Hello-Window) or [Context Creation](https://open.gl/context) sections of the tutorials. Open [main.cpp](https://github.com/Polytonic/Glitter/blob/master/Glitter/Sources/main.cpp) on your computer and start writing code!
-
-## Documentation
-Many people overlook how frustrating it is to install dependencies, especially in environments lacking package managers or administrative privileges. For beginners, just getting set up properly set up can be a huge challenge. Glitter is meant to help you overcome that roadblock.
-
-Glitter provides the most basic windowing example. It is a starting point, and tries very hard not to enforce any sort of directory structure. Feel free to edit the include paths in `CMakeLists.txt`. Glitter bundles most of the dependencies needed to implement a basic rendering engine. This includes:
-
-Functionality           | Library
------------------------ | ------------------------------------------
-Mesh Loading            | [assimp](https://github.com/assimp/assimp)
-Physics                 | [bullet](https://github.com/bulletphysics/bullet3)
-OpenGL Function Loader  | [glad](https://github.com/Dav1dde/glad)
-Windowing and Input     | [glfw](https://github.com/glfw/glfw)
-OpenGL Mathematics      | [glm](https://github.com/g-truc/glm)
-Texture Loading         | [stb](https://github.com/nothings/stb)
-
-If you started the tutorials by installing [SDL](https://www.libsdl.org/), [GLEW](https://github.com/nigels-com/glew), or [SOIL](http://www.lonesock.net/soil.html), *stop*. The libraries bundled with Glitter supersede or are functional replacements for these libraries.
-
-I have provided sample implementations of an intrusive tree mesh and shader class, if you're following along with the tutorials and need another reference point. These were used to generate the screenshot above, but will not compile out-of-the-box. I leave that exercise for the reader. :smiley:
-
-## License
+-------------------------------------------------------------------------------------------------------------------
+## MIT License of the Glitter Boilerplate
 >The MIT License (MIT)
 
 >Copyright (c) 2015 Kevin Fung
