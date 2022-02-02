@@ -46,8 +46,7 @@ cmake -G "Visual Studio 16 2019" ..
 While building in the Visual Studio 2019 IDE, ```Treat Warning As Errors``` had to be unticked in the project file property settings for building the Assimp library.
 ![DoNotTreatWarningAsErrors](screenshots/DoNotTreatWarningsAsErrors.jpg)
 
-4. Run the produced executable file in the command line input.
-```./Glitter```
+4. Go to the directory ```Build/Glitter/Debug``` and now you can see the ```Glitter.exe``` file. Run it, and enjoy!
 
 ## Directory Structure & Explanation
 TBA
