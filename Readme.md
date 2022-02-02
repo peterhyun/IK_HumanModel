@@ -44,7 +44,7 @@ cmake -G "Visual Studio 16 2019" ..
 3. Build the project on your platform accordingly.
 
 While building in the Visual Studio 2019 IDE, ```Treat Warning As Errors``` had to be unticked in the project file property settings for building the Assimp library.
-![TreatWarningAsErrors](screenshots/DoNotTreatWarningsAsErrors.JPG)
+![DoNotTreatWarningAsErrors](screenshots/DoNotTreatWarningsAsErrors.jpg)
 
 4. Run the produced executable file in the command line input.
 ```./Glitter```
