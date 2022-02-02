@@ -21,8 +21,8 @@ For more details regarding Jacobian-based IK solvers, refer to the ```IK Report.
 ## How to build and run.
 1. Download this repository and go to AnimationFramework/Build directory.
 ```
-git clone --recursive https://github.com/peterhyun/AnimationFramework
-cd AnimationFramework
+git clone --recursive https://github.com/peterhyun/IK_HumanModel.git
+cd IK_HumanModel
 cd Build
 ```
 
