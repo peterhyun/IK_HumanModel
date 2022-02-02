@@ -19,7 +19,7 @@ Esc: Exit
 For more details regarding Jacobian-based IK solvers, refer to the ```IK Report.pdf``` file.
 
 ## How to build and run.
-1. Download this repository and go to AnimationFramework/Build directory.
+1. Download this repository and go to the ```IK_HumanModel/Build``` directory.
 ```
 git clone --recursive https://github.com/peterhyun/IK_HumanModel.git
 cd IK_HumanModel
