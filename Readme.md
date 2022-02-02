@@ -46,10 +46,31 @@ cmake -G "Visual Studio 16 2019" ..
 While building in the Visual Studio 2019 IDE, ```Treat Warning As Errors``` had to be unticked in the project file property settings for building the Assimp library.
 ![DoNotTreatWarningAsErrors](screenshots/DoNotTreatWarningsAsErrors.jpg)
 
-4. Go to the directory ```Build/Glitter/Debug``` and now you can see the ```Glitter.exe``` file. Run it, and enjoy!
+4. Go to the directory ```Build/Glitter/Debug``` and now you can see the ```Glitter.exe``` file. Run it with no extra arguments, and enjoy!
 
 ## Directory Structure & Explanation
-TBA
+.  
+├── Build/  
+├── Glitter/  
+│   ├── Headers/  
+│   │   ├── BoneRig.h  
+│   │   ├── Camera.h  
+│   │   ├── Joint.h  
+│   │   └── Shader.h  
+│   ├── Shaders/  
+│   │   ├── AnimationVertexShader.vs  
+│   │   └── AnimationFragmentShader.fs  
+│   ├── Sources/  
+│   │   └── main.cpp  
+│   └── Vendor/  
+├── screenshots/  
+├── CMakeLists.txt  
+├── IK Report.pdf  
+└── Readme.md  
+
+All the code that I wrote are in the ```./Glitter/Headers/```, ```./Glitter/Shaders/```, ```./Gliter/Sources/``` directory. Each ```Joint``` class represents a joint and the connected single bone. There are 24 bones/joints of the human model and the ```BoneRig``` class manages a tree structure of 24 ```Joint```s. The root node represents the pelvis bone and the leaf nodes are the end sites of the human body. ```BoneRig``` also solves the two IK problem(left hand being the end site and the joints being the whole left arm or the whole upper boddy) via the ```BoneRig::solveIKUpperBoddy``` function and the ```BoneRig::solveIKArm``` function. These functions utilize the Jacobian matrices representing the series of joints depending on the type of IK, which are calculated in ```BoneRig::getJacobianUpperBody```, and ```BoneRig::getJacobianArm```.
+
+The vertex shader and fragment shader are simple glsl code used to render the green model on screen, so I won't go over it here.
 
 ## Acknowledgement
 The basic OpenGL Setup boilerplate of this code is from Kevin Fung's Glitter repository: https://github.com/Polytonic/Glitter
