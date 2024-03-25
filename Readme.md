@@ -5,7 +5,7 @@ This is an IK-solver(using Jacobian matrix and damped-least-squared pseudo-inver
 The shoulder's position is fixed and it is a ball-and-socket joint. The rest of the joints(elbow, hand) are just revolute joints.
 
 ## Demo
-https://www.youtube.com/watch?v=n8UnMyvP6Uk&feature=youtu.be
+[https://www.youtube.com/watch?v=n8UnMyvP6Uk&feature=youtu.be](https://youtu.be/gx2ta4KSHos)
 
 ## Key bindings  
 R: Reset model back to default  
